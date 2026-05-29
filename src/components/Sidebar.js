@@ -5,17 +5,41 @@ import { usePathname } from 'next/navigation';
 
 const nav = [
   { href: '/admin/dashboard', label: 'Dashboard' },
-  { href: '/admin/shops', label: 'Shops' },
+  { href: '/admin/shops', label: 'Shops (Tenants)' },
   { href: '/admin/users', label: 'User Management' },
   { href: '/admin/subscriptions', label: 'Subscriptions' },
   {
+    label: 'Customer App Directory',
+    children: [
+      { href: '/admin/directory/shops', label: 'Shops Directory' },
+      { href: '/admin/directory/banners', label: 'Home Banners' },
+      { href: '/admin/directory/support-contacts', label: 'Support Contacts' },
+      { href: '/admin/directory/faq-items', label: 'FAQ' },
+      { href: '/admin/directory/app-content', label: 'App Content (About/Terms)' },
+    ],
+  },
+  {
     label: 'Master Data',
     children: [
+      { href: '/admin/master/device-categories', label: 'Categories' },
       { href: '/admin/master/brands', label: 'Brands' },
+      { href: '/admin/master/category-brand-mapping', label: 'Category-Brand Mapping' },
+      { href: '/admin/master/series', label: 'Series' },
       { href: '/admin/master/models', label: 'Models' },
+      { href: '/admin/master/colors', label: 'Colors' },
       { href: '/admin/master/repair-services', label: 'Repair Services' },
+      { href: '/admin/master/repair-categories', label: 'Repair Categories' },
       { href: '/admin/master/ram-options', label: 'RAM Options' },
       { href: '/admin/master/storage-options', label: 'Storage Options' },
+    ],
+  },
+  {
+    label: 'Sell Flow Master Data',
+    children: [
+      { href: '/admin/master/screening-questions', label: 'Screening Questions' },
+      { href: '/admin/master/condition-groups', label: 'Condition Groups' },
+      { href: '/admin/master/functional-issues', label: 'Functional Issues' },
+      { href: '/admin/master/device-configuration', label: 'Device Configuration' },
     ],
   },
   {

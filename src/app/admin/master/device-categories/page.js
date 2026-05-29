@@ -5,20 +5,21 @@ import { masterApi } from '@/lib/api';
 import DataTable from '@/components/DataTable';
 import ImageUpload from '@/components/ImageUpload';
 
-export default function MasterBrandsPage() {
+export default function MasterDeviceCategoriesPage() {
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [modal, setModal] = useState(null); // { type: 'create' | 'edit', item?: {} }
+  const [modal, setModal] = useState(null);
   const [name, setName] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [isActive, setIsActive] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
   const load = async () => {
     setLoading(true);
     setError('');
     try {
-      const data = await masterApi.get('/master/brands');
+      const data = await masterApi.get('/master/device-categories');
       setList(Array.isArray(data) ? data : data?.content ?? []);
     } catch (e) {
       setError(e.message || 'Failed to load');
@@ -36,11 +37,13 @@ export default function MasterBrandsPage() {
     setModal({ type: 'create' });
     setName('');
     setImageUrl('');
+    setIsActive(true);
   };
   const openEdit = (item) => {
     setModal({ type: 'edit', item });
     setName(item.name || '');
     setImageUrl(item.imageUrl || '');
+    setIsActive(item.isActive ?? true);
   };
   const closeModal = () => setModal(null);
 
@@ -49,13 +52,16 @@ export default function MasterBrandsPage() {
     if (!name.trim()) return;
     setSubmitting(true);
     try {
+      // Backend auto-derives `code` from name when not supplied.
+      const body = {
+        name: name.trim(),
+        imageUrl: imageUrl.trim() || null,
+        isActive,
+      };
       if (modal.type === 'create') {
-        await masterApi.post('/master/brands', { name: name.trim(), imageUrl: imageUrl.trim() || null });
+        await masterApi.post('/master/device-categories', body);
       } else {
-        await masterApi.put(`/master/brands/${modal.item.id}`, {
-          name: name.trim(),
-          imageUrl: imageUrl.trim() || null,
-        });
+        await masterApi.put(`/master/device-categories/${modal.item.id}`, body);
       }
       closeModal();
       load();
@@ -67,9 +73,9 @@ export default function MasterBrandsPage() {
   };
 
   const handleDelete = async (row) => {
-    if (!confirm('Delete this brand? Models under it may need to be removed first.')) return;
+    if (!confirm('Delete this category?')) return;
     try {
-      await masterApi.delete(`/master/brands/${row.id}`);
+      await masterApi.delete(`/master/device-categories/${row.id}`);
       load();
     } catch (e) {
       setError(e.body?.message || e.message || 'Delete failed');
@@ -77,40 +83,38 @@ export default function MasterBrandsPage() {
   };
 
   const columns = [
+    { key: 'name', label: 'Name' },
     {
       key: 'imageUrl',
-      label: 'Logo',
+      label: 'Image',
       render: (r) =>
         r.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={r.imageUrl}
-            alt={r.name || 'brand'}
-            className="h-10 w-10 rounded-md object-contain bg-white p-0.5"
-          />
+          <img src={r.imageUrl} alt="" className="h-8 w-8 rounded object-cover" />
         ) : (
-          <div className="h-10 w-10 rounded-md bg-admin-dark border border-admin-border flex items-center justify-center text-[10px] text-admin-muted">
-            no logo
-          </div>
+          '—'
         ),
     },
-    { key: 'name', label: 'Name' },
+    {
+      key: 'isActive',
+      label: 'Active',
+      render: (r) => (r.isActive ? 'Yes' : 'No'),
+    },
   ];
 
   return (
     <div className="p-6 md:p-8">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold text-slate-100">Mobile Brands</h1>
+        <h1 className="text-2xl font-semibold text-slate-100">Categories</h1>
         <button
           type="button"
           onClick={openCreate}
           className="rounded-lg bg-admin-accent px-4 py-2 text-sm font-medium text-white hover:bg-sky-600"
         >
-          Add brand
+          Add category
         </button>
       </div>
       <p className="text-admin-muted text-sm mb-4">
-        These brands drive the mobile app dropdown (GET /api/master/brands). Add or edit here to update app options.
+        Top-level categories — Mobile, Laptop, Tablet, etc. (GET /api/master/categories).
       </p>
       {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
       {loading ? (
@@ -121,7 +125,7 @@ export default function MasterBrandsPage() {
           rows={list}
           onEdit={openEdit}
           onDelete={handleDelete}
-          emptyMessage="No brands. Add one to show in mobile app dropdowns."
+          emptyMessage="No categories yet."
         />
       )}
 
@@ -129,7 +133,7 @@ export default function MasterBrandsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div className="w-full max-w-md rounded-xl bg-admin-card border border-admin-border p-6">
             <h2 className="text-lg font-medium text-slate-100 mb-4">
-              {modal.type === 'create' ? 'New brand' : 'Edit brand'}
+              {modal.type === 'create' ? 'New category' : 'Edit category'}
             </h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
@@ -139,26 +143,29 @@ export default function MasterBrandsPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full rounded-lg bg-admin-dark border border-admin-border px-3 py-2 text-slate-100"
+                  placeholder="e.g. Mobile, Laptop, Tablet"
                   required
                 />
               </div>
               <ImageUpload
                 value={imageUrl}
                 onChange={setImageUrl}
-                label="Brand logo"
-                caption="Shown in customer brand picker (e.g. Apple, Vivo, Samsung)"
-                folder="brands"
-                buttonText="Upload Brand Logo"
+                label="Category image"
+                caption="Shown on the customer Home tile (Mobile, Laptop, etc.)"
+                folder="categories"
+                buttonText="Upload Category Image"
               />
+              <label className="flex items-center gap-2 text-sm text-slate-200">
+                <input
+                  type="checkbox"
+                  checked={isActive}
+                  onChange={(e) => setIsActive(e.target.checked)}
+                />
+                Active
+              </label>
               <div className="flex gap-2 justify-end">
-                <button type="button" onClick={closeModal} className="rounded-lg px-4 py-2 text-slate-300 hover:bg-admin-dark">
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="rounded-lg bg-admin-accent px-4 py-2 text-white disabled:opacity-50"
-                >
+                <button type="button" onClick={closeModal} className="rounded-lg px-4 py-2 text-slate-300 hover:bg-admin-dark">Cancel</button>
+                <button type="submit" disabled={submitting} className="rounded-lg bg-admin-accent px-4 py-2 text-white disabled:opacity-50">
                   {submitting ? 'Saving…' : 'Save'}
                 </button>
               </div>

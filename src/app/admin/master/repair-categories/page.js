@@ -12,11 +12,9 @@ const mergeUnique = (prev, parts) => {
   return next;
 };
 
-export default function MasterRepairServicesPage() {
-  const [categories, setCategories] = useState([]);   // device categories
-  const [mainCats, setMainCats] = useState([]);       // repair (main) categories — all
+export default function MasterRepairCategoriesPage() {
+  const [categories, setCategories] = useState([]); // device categories
   const [filterCategory, setFilterCategory] = useState('');
-  const [filterMain, setFilterMain] = useState('');
 
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -24,47 +22,28 @@ export default function MasterRepairServicesPage() {
 
   const [modal, setModal] = useState(null);
   const [deviceCategoryId, setDeviceCategoryId] = useState('');
-  const [categoryId, setCategoryId] = useState('');
-  const [name, setName] = useState('');            // edit mode (single issue)
-  const [issueInput, setIssueInput] = useState(''); // create mode typing buffer
-  const [issueNames, setIssueNames] = useState([]); // create mode bulk list
+  const [name, setName] = useState('');             // edit mode (single)
+  const [catInput, setCatInput] = useState('');     // create mode typing buffer
+  const [catNames, setCatNames] = useState([]);     // create mode bulk list
+  const [isActive, setIsActive] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  const loadRefData = async () => {
+  const loadCategories = async () => {
     try {
-      const [cats, mains] = await Promise.all([
-        masterApi.get('/master/device-categories').catch(() => []),
-        masterApi.get('/master/repair-categories').catch(() => []),
-      ]);
+      const cats = await masterApi.get('/master/device-categories').catch(() => []);
       setCategories(Array.isArray(cats) ? cats : cats?.content ?? []);
-      setMainCats(Array.isArray(mains) ? mains : mains?.content ?? []);
     } catch (e) {
-      setError(e.message || 'Failed to load reference data');
+      setError(e.message || 'Failed to load categories');
     }
   };
-  useEffect(() => { loadRefData(); }, []);
-
-  // Main categories available under the selected device category.
-  const mainCatsForFilter = useMemo(() => (
-    filterCategory ? mainCats.filter((m) => m.deviceCategoryId === filterCategory) : mainCats
-  ), [filterCategory, mainCats]);
-  const mainCatsForForm = useMemo(() => (
-    deviceCategoryId ? mainCats.filter((m) => m.deviceCategoryId === deviceCategoryId) : []
-  ), [deviceCategoryId, mainCats]);
-
-  useEffect(() => {
-    if (filterMain && !mainCatsForFilter.some((m) => m.id === filterMain)) setFilterMain('');
-  }, [filterMain, mainCatsForFilter]);
+  useEffect(() => { loadCategories(); }, []);
 
   const load = async () => {
     setLoading(true);
     setError('');
     try {
-      const params = new URLSearchParams();
-      if (filterCategory) params.set('deviceCategoryId', filterCategory);
-      if (filterMain) params.set('categoryId', filterMain);
-      const qs = params.toString();
-      const data = await masterApi.get(`/master/repair-services${qs ? `?${qs}` : ''}`);
+      const q = filterCategory ? `?deviceCategoryId=${filterCategory}` : '';
+      const data = await masterApi.get(`/master/repair-categories${q}`);
       setList(Array.isArray(data) ? data : data?.content ?? []);
     } catch (e) {
       setError(e.message || 'Failed to load');
@@ -73,53 +52,51 @@ export default function MasterRepairServicesPage() {
       setLoading(false);
     }
   };
-  useEffect(() => { load(); }, [filterCategory, filterMain]);
+  useEffect(() => { load(); }, [filterCategory]);
 
-  const deviceName = (id) => categories.find((c) => c.id === id)?.name || '—';
-  const mainName = (id) => mainCats.find((m) => m.id === id)?.name || '—';
+  const categoryName = (id) => categories.find((c) => c.id === id)?.name || '—';
 
   const openCreate = () => {
     setModal({ type: 'create' });
     setDeviceCategoryId(filterCategory || categories[0]?.id || '');
-    setCategoryId(filterMain || '');
     setName('');
-    setIssueInput('');
-    setIssueNames([]);
+    setCatInput('');
+    setCatNames([]);
+    setIsActive(true);
   };
   const openEdit = (item) => {
     setModal({ type: 'edit', item });
     setDeviceCategoryId(item.deviceCategoryId || '');
-    setCategoryId(item.categoryId || '');
     setName(item.name || '');
+    setIsActive(item.isActive ?? true);
   };
   const closeModal = () => setModal(null);
 
-  // Add the typed issue(s) to the bulk list — splits on commas/new lines.
-  const addIssue = () => {
-    const parts = splitNames(issueInput);
+  const addCat = () => {
+    const parts = splitNames(catInput);
     if (!parts.length) return;
-    setIssueNames((prev) => mergeUnique(prev, parts));
-    setIssueInput('');
+    setCatNames((prev) => mergeUnique(prev, parts));
+    setCatInput('');
   };
-  const removeIssue = (n) => setIssueNames((prev) => prev.filter((x) => x !== n));
+  const removeCat = (n) => setCatNames((prev) => prev.filter((x) => x !== n));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!deviceCategoryId || !categoryId) return;
+    if (!deviceCategoryId) return;
     setSubmitting(true);
     try {
       if (modal.type === 'create') {
-        const names = [...issueNames, ...splitNames(issueInput)];
+        const names = [...catNames, ...splitNames(catInput)];
         const uniq = [...new Set(names.map((n) => n.trim()).filter(Boolean))];
         if (!uniq.length) { setSubmitting(false); return; }
         // Store one-by-one via the single-create endpoint.
         for (const nm of uniq) {
-          await masterApi.post('/master/repair-services', { deviceCategoryId, categoryId, name: nm });
+          await masterApi.post('/master/repair-categories', { deviceCategoryId, name: nm, isActive: true });
         }
       } else {
         if (!name.trim()) { setSubmitting(false); return; }
-        await masterApi.put(`/master/repair-services/${modal.item.id}`, {
-          name: name.trim(), deviceCategoryId, categoryId,
+        await masterApi.put(`/master/repair-categories/${modal.item.id}`, {
+          deviceCategoryId, name: name.trim(), isActive,
         });
       }
       closeModal();
@@ -132,9 +109,9 @@ export default function MasterRepairServicesPage() {
   };
 
   const handleDelete = async (row) => {
-    if (!confirm('Delete this issue?')) return;
+    if (!confirm('Delete this main category? Its issues will be unlinked.')) return;
     try {
-      await masterApi.delete(`/master/repair-services/${row.id}`);
+      await masterApi.delete(`/master/repair-categories/${row.id}`);
       load();
     } catch (e) {
       setError(e.body?.message || e.message || 'Delete failed');
@@ -142,32 +119,23 @@ export default function MasterRepairServicesPage() {
   };
 
   const columns = useMemo(() => [
-    { key: 'deviceCategoryId', label: 'Category', render: (r) => deviceName(r.deviceCategoryId) },
-    { key: 'categoryId', label: 'Main Category', render: (r) => mainName(r.categoryId) },
-    { key: 'name', label: 'Issue' },
-    { key: 'description', label: 'Description', render: (r) => r.description || '—' },
-  ], [categories, mainCats]);
+    { key: 'deviceCategoryId', label: 'Category', render: (r) => categoryName(r.deviceCategoryId) },
+    { key: 'name', label: 'Main Category' },
+    { key: 'isActive', label: 'Active', render: (r) => (r.isActive ? 'Yes' : 'No') },
+  ], [categories]);
 
   return (
     <div className="p-6 md:p-8">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <h1 className="text-2xl font-semibold text-slate-100">Repair Services</h1>
+        <h1 className="text-2xl font-semibold text-slate-100">Repair Categories</h1>
         <div className="flex flex-wrap items-center gap-3">
           <select
             value={filterCategory}
-            onChange={(e) => { setFilterCategory(e.target.value); setFilterMain(''); }}
+            onChange={(e) => setFilterCategory(e.target.value)}
             className="rounded-lg bg-admin-card border border-admin-border px-3 py-2 text-slate-200 text-sm"
           >
             <option value="">All categories</option>
             {categories.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}
-          </select>
-          <select
-            value={filterMain}
-            onChange={(e) => setFilterMain(e.target.value)}
-            className="rounded-lg bg-admin-card border border-admin-border px-3 py-2 text-slate-200 text-sm"
-          >
-            <option value="">All main categories</option>
-            {mainCatsForFilter.map((m) => (<option key={m.id} value={m.id}>{m.name}</option>))}
           </select>
           <button
             type="button"
@@ -175,13 +143,13 @@ export default function MasterRepairServicesPage() {
             disabled={!categories.length}
             className="rounded-lg bg-admin-accent px-4 py-2 text-sm font-medium text-white hover:bg-sky-600 disabled:opacity-50"
           >
-            Add issue
+            Add main category
           </button>
         </div>
       </div>
       <p className="text-admin-muted text-sm mb-4">
-        Issues live under a main category — e.g. <span className="text-slate-300">Mobile → Display &amp; Touch → "Screen Broken"</span>.
-        Create the main category first in <span className="text-slate-300">Repair Categories</span>.
+        Main repair categories per device category — e.g. <span className="text-slate-300">Mobile → Display &amp; Touch</span>.
+        Issues (Repair Services) live under these.
       </p>
       {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
       {loading ? (
@@ -192,7 +160,7 @@ export default function MasterRepairServicesPage() {
           rows={list}
           onEdit={openEdit}
           onDelete={handleDelete}
-          emptyMessage="No issues. Pick a category + main category and add one."
+          emptyMessage="No main categories. Pick a device category and add one."
         />
       )}
 
@@ -200,14 +168,14 @@ export default function MasterRepairServicesPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div className="w-full max-w-md rounded-xl bg-admin-card border border-admin-border p-6">
             <h2 className="text-lg font-medium text-slate-100 mb-4">
-              {modal.type === 'create' ? 'Add issues' : 'Edit issue'}
+              {modal.type === 'create' ? 'Add main categories' : 'Edit main category'}
             </h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm text-admin-muted mb-1">Device category</label>
                 <select
                   value={deviceCategoryId}
-                  onChange={(e) => { setDeviceCategoryId(e.target.value); setCategoryId(''); }}
+                  onChange={(e) => setDeviceCategoryId(e.target.value)}
                   className="w-full rounded-lg bg-admin-dark border border-admin-border px-3 py-2 text-slate-100"
                   required
                 >
@@ -215,62 +183,50 @@ export default function MasterRepairServicesPage() {
                   {categories.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}
                 </select>
               </div>
-              <div>
-                <label className="block text-sm text-admin-muted mb-1">Main category</label>
-                <select
-                  value={categoryId}
-                  onChange={(e) => setCategoryId(e.target.value)}
-                  className="w-full rounded-lg bg-admin-dark border border-admin-border px-3 py-2 text-slate-100"
-                  required
-                  disabled={!deviceCategoryId}
-                >
-                  <option value="">Select main category</option>
-                  {mainCatsForForm.map((m) => (<option key={m.id} value={m.id}>{m.name}</option>))}
-                </select>
-                {deviceCategoryId && mainCatsForForm.length === 0 && (
-                  <p className="text-xs text-amber-400 mt-1">
-                    No main categories for this device category yet. Add one in Repair Categories first.
-                  </p>
-                )}
-              </div>
               {modal.type === 'create' ? (
                 <div>
-                  <label className="block text-sm text-admin-muted mb-1">Issue names</label>
+                  <label className="block text-sm text-admin-muted mb-1">Main categories</label>
                   <input
                     type="text"
-                    value={issueInput}
-                    onChange={(e) => setIssueInput(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addIssue(); } }}
+                    value={catInput}
+                    onChange={(e) => setCatInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCat(); } }}
                     className="w-full rounded-lg bg-admin-dark border border-admin-border px-3 py-2 text-slate-100"
-                    placeholder="Screen Broken, No Display, Touch Not Working — comma-separated, press Enter"
+                    placeholder="Display & Touch, Battery & Charging — comma-separated, press Enter"
                   />
-                  {issueNames.length > 0 && (
+                  {catNames.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-3">
-                      {issueNames.map((n) => (
+                      {catNames.map((n) => (
                         <span key={n} className="inline-flex items-center gap-1 rounded-full bg-admin-accent/20 text-admin-accent px-3 py-1 text-xs">
                           {n}
-                          <button type="button" onClick={() => removeIssue(n)} className="text-admin-accent/80 hover:text-white">×</button>
+                          <button type="button" onClick={() => removeCat(n)} className="text-admin-accent/80 hover:text-white">×</button>
                         </span>
                       ))}
                     </div>
                   )}
                   <p className="text-xs text-admin-muted mt-2">
-                    Add several issues, then Save — all are created under the selected main category.
+                    Add several main categories, then Save — all are created under the selected device category.
                   </p>
                 </div>
               ) : (
                 <div>
-                  <label className="block text-sm text-admin-muted mb-1">Issue name</label>
+                  <label className="block text-sm text-admin-muted mb-1">Main category</label>
                   <input
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     className="w-full rounded-lg bg-admin-dark border border-admin-border px-3 py-2 text-slate-100"
-                    placeholder="e.g. Screen Broken"
+                    placeholder="e.g. Display & Touch"
                     required
                   />
                 </div>
               )}
+              {modal.type === 'edit' ? (
+                <label className="flex items-center gap-2 text-sm text-slate-200">
+                  <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
+                  Active
+                </label>
+              ) : null}
               <div className="flex gap-2 justify-end">
                 <button type="button" onClick={closeModal} className="rounded-lg px-4 py-2 text-slate-300 hover:bg-admin-dark">Cancel</button>
                 <button type="submit" disabled={submitting} className="rounded-lg bg-admin-accent px-4 py-2 text-white disabled:opacity-50">
