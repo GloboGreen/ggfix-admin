@@ -2,12 +2,14 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { authApi } from '@/lib/api';
 import { setToken } from '@/lib/auth';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnTo = searchParams.get('returnTo');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -22,7 +24,9 @@ export default function LoginPage() {
       const token = res.accessToken || res.token;
       if (token) {
         setToken(token);
-        router.replace('/admin/dashboard');
+        // Return to the page they were on (if it was an /admin/* page).
+        const dest = returnTo && returnTo.startsWith('/admin') ? returnTo : '/admin/dashboard';
+        router.replace(dest);
       } else {
         setError('Invalid response: no token');
       }
