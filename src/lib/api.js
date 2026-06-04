@@ -97,6 +97,7 @@ export const authApi = {
   get: (path) => request(AUTH_BASE(), path),
   post: (path, body) => request(AUTH_BASE(), path, { method: 'POST', body: JSON.stringify(body) }),
   patch: (path, body) => request(AUTH_BASE(), path, { method: 'PATCH', body: JSON.stringify(body) }),
+  delete: (path) => request(AUTH_BASE(), path, { method: 'DELETE' }),
 };
 
 export const ticketApi = {

@@ -5,13 +5,12 @@ import { usePathname } from 'next/navigation';
 
 const nav = [
   { href: '/admin/dashboard', label: 'Dashboard' },
-  { href: '/admin/shops', label: 'Shops (Tenants)' },
+  { href: '/admin/shops', label: 'Shop Management' },
   { href: '/admin/users', label: 'User Management' },
   { href: '/admin/subscriptions', label: 'Subscriptions' },
   {
     label: 'Customer App Directory',
     children: [
-      { href: '/admin/directory/shops', label: 'Shops Directory' },
       { href: '/admin/directory/banners', label: 'Home Banners' },
       { href: '/admin/directory/support-contacts', label: 'Support Contacts' },
       { href: '/admin/directory/faq-items', label: 'FAQ' },
