@@ -28,7 +28,15 @@ const EMPTY_LOC = {
   // latitude/longitude are auto-captured from browser geolocation on submit.
   latitude: '', longitude: '',
   frontImageUrl: '', bannerImageUrl: '', gstCertificateUrl: '', udyamCertificateUrl: '',
+  // Shop working hours (admin Edit Business Location form)
+  workingDays: 'MON_SAT', openingTime: '', closingTime: '',
 };
+
+const WORKING_DAYS_OPTIONS = [
+  { value: 'MON_FRI', label: 'Monday – Friday' },
+  { value: 'MON_SAT', label: 'Monday – Saturday' },
+  { value: 'MON_SUN', label: 'Monday – Sunday' },
+];
 
 const EMPTY_OWNER = {
   name: '', email: '',
@@ -299,6 +307,9 @@ export default function NewShopOwnerPage() {
           bannerImageUrl: l.bannerImageUrl || undefined,
           gstCertificateUrl: l.gstCertificateUrl || undefined,
           udyamCertificateUrl: l.udyamCertificateUrl || undefined,
+          workingDays: l.workingDays || undefined,
+          openingTime: l.openingTime?.trim() || undefined,
+          closingTime: l.closingTime?.trim() || undefined,
         })),
       };
       await authApi.post('/auth/shop-owner', payload);
@@ -539,6 +550,34 @@ export default function NewShopOwnerPage() {
                       onChange={(e) => setLocationField(i, 'longitude', e.target.value)}
                       className="input"
                       placeholder={autoCoords ? autoCoords.longitude.toFixed(6) : 'e.g. 80.2917'}
+                    />
+                  </Field>
+
+                  <Field label="WORKING DAYS">
+                    <select
+                      value={loc.workingDays || ''}
+                      onChange={(e) => setLocationField(i, 'workingDays', e.target.value)}
+                      className="input"
+                    >
+                      {WORKING_DAYS_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="OPENING TIME">
+                    <input
+                      value={loc.openingTime || ''}
+                      onChange={(e) => setLocationField(i, 'openingTime', e.target.value)}
+                      className="input"
+                      placeholder="08:00 AM"
+                    />
+                  </Field>
+                  <Field label="CLOSING TIME">
+                    <input
+                      value={loc.closingTime || ''}
+                      onChange={(e) => setLocationField(i, 'closingTime', e.target.value)}
+                      className="input"
+                      placeholder="07:00 PM"
                     />
                   </Field>
                 </div>

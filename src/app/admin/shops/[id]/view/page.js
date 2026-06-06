@@ -12,7 +12,15 @@ const EMPTY_LOC = {
   // latitude/longitude auto-captured from browser geolocation when adding.
   latitude: '', longitude: '',
   frontImageUrl: '', bannerImageUrl: '', gstCertificateUrl: '', udyamCertificateUrl: '',
+  // Shop working hours
+  workingDays: 'MON_SAT', openingTime: '', closingTime: '',
 };
+
+const WORKING_DAYS_OPTIONS = [
+  { value: 'MON_FRI', label: 'Monday – Friday' },
+  { value: 'MON_SAT', label: 'Monday – Saturday' },
+  { value: 'MON_SUN', label: 'Monday – Sunday' },
+];
 
 function detectTimezone() {
   try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata'; }
@@ -665,6 +673,34 @@ function LocationModal({ ownerId, mode, initial, onClose, onSaved }) {
                 onChange={(e) => setField('longitude', e.target.value)}
                 className="modal-input"
                 placeholder={autoCoords ? autoCoords.longitude.toFixed(6) : 'e.g. 80.2917'}
+              />
+            </ModalField>
+
+            <ModalField label="Working Days">
+              <select
+                value={form.workingDays || ''}
+                onChange={(e) => setField('workingDays', e.target.value)}
+                className="modal-input"
+              >
+                {WORKING_DAYS_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </ModalField>
+            <ModalField label="Opening Time">
+              <input
+                value={form.openingTime || ''}
+                onChange={(e) => setField('openingTime', e.target.value)}
+                className="modal-input"
+                placeholder="08:00 AM"
+              />
+            </ModalField>
+            <ModalField label="Closing Time">
+              <input
+                value={form.closingTime || ''}
+                onChange={(e) => setField('closingTime', e.target.value)}
+                className="modal-input"
+                placeholder="07:00 PM"
               />
             </ModalField>
           </div>
