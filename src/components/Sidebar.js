@@ -28,6 +28,7 @@ const nav = [
       { href: '/admin/master/colors', label: 'Colors' },
       { href: '/admin/master/repair-services', label: 'Repair Services' },
       { href: '/admin/master/repair-categories', label: 'Repair Categories' },
+      { href: '/admin/master/technician-work-statuses', label: 'Work Status' },
       { href: '/admin/master/ram-options', label: 'RAM Options' },
       { href: '/admin/master/storage-options', label: 'Storage Options' },
     ],
