@@ -29,13 +29,28 @@ export default function LoginPage() {
       else body.password = password;
       const res = await authApi.post('/auth/login', body);
       const token = res.accessToken || res.token;
-      if (token) {
-        setToken(token);
-        const dest = returnTo && returnTo.startsWith('/admin') ? returnTo : '/admin/dashboard';
-        router.replace(dest);
-      } else {
+      if (!token) {
         setError('Invalid response: no token');
+        return;
       }
+
+      // Gate the admin web by loginType. Only SUPER_ADMIN belongs on /admin/*.
+      // Shop-owner and shop-mobile sessions are mobile-app territory; employee
+      // sessions belong in the employee app. We reject them here with a clear
+      // message rather than dropping them on a half-broken admin dashboard.
+      const loginType = res.loginType;
+      if (loginType && loginType !== 'SUPER_ADMIN') {
+        setError(
+          loginType === 'SHOP_OWNER' || loginType === 'SHOP_LOGIN'
+            ? 'Shop accounts must sign in through the GGfix mobile app.'
+            : 'Employee accounts must sign in through the employee app.',
+        );
+        return;
+      }
+
+      setToken(token);
+      const dest = returnTo && returnTo.startsWith('/admin') ? returnTo : '/admin/dashboard';
+      router.replace(dest);
     } catch (err) {
       setError(err.body?.message || err.message || 'Login failed');
     } finally {
